@@ -1,19 +1,21 @@
 mod last_doc_app;
 mod stream_app;
+mod ping_db;
 
 #[tokio::main]
 async fn main() -> mongodb::error::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        eprintln!("Please provide the app to run: `last_doc` or `stream`");
+        eprintln!("Please provide the app to run: `last_doc`, `stream`, or `ping_db`");
         std::process::exit(1);
     }
 
     match args[1].as_str() {
         "last_doc" => last_doc_app::run().await?,
         "stream" => stream_app::run().await?,
+        "ping_db" => ping_db::run().await?,
         _ => {
-            eprintln!("Invalid argument. Use `last_doc` or `stream`");
+            eprintln!("Invalid argument. Use `last_doc`, `stream`, or `ping_db`");
             std::process::exit(1);
         }
     }
