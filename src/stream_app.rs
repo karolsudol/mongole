@@ -1,4 +1,4 @@
-use mongodb::{bson::doc, Client, options::ChangeStreamOptions};
+use mongodb::{bson::doc, change_stream::event::OperationType, options::ChangeStreamOptions, Client};
 use serde::{Deserialize, Serialize};
 use futures::stream::StreamExt;
 
@@ -51,7 +51,14 @@ struct PaymasterUserOperations {
     updated_at: Option<i64>,
 }
 
-pub async fn run() -> mongodb::error::Result<()> {
+// Add an enum to handle different types of events you want to listen for
+pub enum ChangeEventType {
+    Insert,
+    Update,
+    All, // Both insert and update events
+}
+
+pub async fn run(event_type: ChangeEventType) -> mongodb::error::Result<()> {
     dotenv::dotenv().ok();
     let mongodb_uri = std::env::var("MONGODB_URI").expect("MONGODB_URI must be set");
     let mongodb_database = std::env::var("MONGODB_DATABASE").expect("MONGODB_DATABASE must be set");
@@ -68,20 +75,27 @@ pub async fn run() -> mongodb::error::Result<()> {
     while let Some(change) = change_stream.next().await {
         match change {
             Ok(event) => {
-                println!("********************************");
-                println!("New change detected:");
-
-                if let Some(full_document) = event.full_document {
-                    // Filter only known fields in the schema and pretty-print them
-                    println!("{:#?}", full_document); // Pretty-print known fields
-                } else {
-                    // Handle updates without full document, printing only updated fields
-                    if let Some(update_desc) = event.update_description {
-                        println!("Updated fields: {:#?}", update_desc.updated_fields); // Pretty-print updated fields
+                // Filter based on the selected event type
+                match event.operation_type {
+                    OperationType::Insert if matches!(event_type, ChangeEventType::Insert | ChangeEventType::All) => {
+                        // Handle new documents
+                        if let Some(full_document) = event.full_document {
+                            println!("New document inserted:");
+                            println!("{:#?}", full_document); // Pretty-print the inserted document
+                        }
+                    }
+                    OperationType::Update if matches!(event_type, ChangeEventType::Update | ChangeEventType::All) => {
+                        // Handle updates
+                        if let Some(update_desc) = event.update_description {
+                            println!("Document updated:");
+                            println!("Updated fields: {:#?}", update_desc.updated_fields); // Pretty-print updated fields
+                        }
+                    }
+                    _ => {
+                        // Skip other operation types
+                        continue;
                     }
                 }
-
-                println!("********************************");
             }
             Err(e) => eprintln!("Error watching changes: {}", e),
         }
