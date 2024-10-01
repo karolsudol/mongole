@@ -1,56 +1,54 @@
-// src/stream_app.rs
 use mongodb::{bson::doc, Client, options::ChangeStreamOptions};
 use serde::{Deserialize, Serialize};
 use futures::stream::StreamExt;
-// use tokio;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct UserOp {
-    sender: String,
-    nonce: String,
-    init_code: String,
-    call_data: String,
-    signature: String,
-    paymaster_and_data: String,
-    max_fee_per_gas: String,
-    max_priority_fee_per_gas: String,
+    sender: Option<String>,
+    nonce: Option<String>,
+    init_code: Option<String>,
+    call_data: Option<String>,
+    signature: Option<String>,
+    paymaster_and_data: Option<String>,
+    max_fee_per_gas: Option<String>,
+    max_priority_fee_per_gas: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct PaymasterUserOperations {
     #[serde(rename = "_id")]
-    id: String,
-    actual_gas_cost: i64,
-    actual_gas_used: i64,
-    api_key: String,
-    request_id: String,
-    chain_id: i32,
-    entry_point_address: String,
-    exchange_rate: String,
-    mode: String,
-    paymaster_and_data: String,
-    nonce: i64,
-    oracle_aggregator: String,
-    paymaster_address: String,
-    paymaster_id: String,
-    paymaster_type: String,
-    paymaster_version: String,
-    price_markup: String,
-    price_source: bool,
-    smart_account_address: String,
-    state: String,
-    success: bool,
-    token: String,
-    token_decimal: i32,
-    token_symbol: String,
-    transaction_hash: String,
-    user_op: UserOp,
-    user_op_hash: String,
-    value: String,
-    value_in_usd: String,
-    created_at_timestamp: i64,
-    created_at: i64,
-    updated_at: i64,
+    id: Option<String>,
+    actual_gas_cost: Option<i64>,
+    actual_gas_used: Option<i64>,
+    api_key: Option<String>,
+    request_id: Option<String>,
+    chain_id: Option<i32>,
+    entry_point_address: Option<String>,
+    exchange_rate: Option<String>,
+    mode: Option<String>,
+    paymaster_and_data: Option<String>,
+    nonce: Option<i64>,
+    oracle_aggregator: Option<String>,
+    paymaster_address: Option<String>,
+    paymaster_id: Option<String>,
+    paymaster_type: Option<String>,
+    paymaster_version: Option<String>,
+    price_markup: Option<String>,
+    price_source: Option<bool>,
+    smart_account_address: Option<String>,
+    state: Option<String>,
+    success: Option<bool>,
+    token: Option<String>,
+    token_decimal: Option<i32>,
+    token_symbol: Option<String>,
+    transaction_hash: Option<String>,
+    user_op: Option<UserOp>,
+    user_op_hash: Option<String>,
+    value: Option<String>,
+    value_in_usd: Option<String>,
+    created_at_timestamp: Option<i64>,
+    created_at: Option<i64>,
+    updated_at: Option<i64>,
 }
 
 pub async fn run() -> mongodb::error::Result<()> {
@@ -71,7 +69,18 @@ pub async fn run() -> mongodb::error::Result<()> {
         match change {
             Ok(event) => {
                 println!("********************************");
-                println!("New change detected: {:?}", event);
+                println!("New change detected:");
+
+                if let Some(full_document) = event.full_document {
+                    // Filter only known fields in the schema and pretty-print them
+                    println!("{:#?}", full_document); // Pretty-print known fields
+                } else {
+                    // Handle updates without full document, printing only updated fields
+                    if let Some(update_desc) = event.update_description {
+                        println!("Updated fields: {:#?}", update_desc.updated_fields); // Pretty-print updated fields
+                    }
+                }
+
                 println!("********************************");
             }
             Err(e) => eprintln!("Error watching changes: {}", e),
